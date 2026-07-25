@@ -47,12 +47,21 @@ jobs:
             fi
           fi
           git push origin "$BRANCH"
+          create_pr() {
+            TITLE="$1"; BODY="$2"
+            EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY%%/*}:${BRANCH}" --jq 'length')
+            if [ "$EXISTING" -gt 0 ]; then
+              echo "PR for ${BRANCH} already exists; skipping creation."
+              return 0
+            fi
+            gh api "repos/${GITHUB_REPOSITORY}/pulls" \
+              -f base=main -f head="$BRANCH" \
+              -f title="$TITLE" -f body="$BODY" --jq .html_url
+          }
           if [ "$RESULT" = conflict ]; then
-            gh pr create --base main --head "$BRANCH" \
-              --title "Upstream sync $(date +%Y-%m-%d): manual resolution needed" \
-              --body "$(printf 'Merging upstream/main conflicts outside tool/ in:\n\n%s\n\nResolve locally per light-workspace/docs/SYNCING.md. This branch is pinned at upstream/main — no conflict markers are committed.' "$OUTSIDE")"
+            create_pr "Upstream sync $(date +%Y-%m-%d): manual resolution needed" \
+              "$(printf 'Merging upstream/main conflicts outside tool/ in:\n\n%s\n\nResolve locally per light-workspace/docs/SYNCING.md. This branch is pinned at upstream/main — no conflict markers are committed.' "$OUTSIDE")"
           else
-            gh pr create --base main --head "$BRANCH" \
-              --title "Upstream sync $(date +%Y-%m-%d)" \
-              --body "Merge of upstream/main ($RESULT). tool/ conflicts, if any, auto-resolved in this repo's favor. Review the SDK changes and merge when CI is green."
+            create_pr "Upstream sync $(date +%Y-%m-%d)" \
+              "Merge of upstream/main ($RESULT). tool/ conflicts, if any, auto-resolved in this repo's favor. Review the SDK changes and merge when CI is green."
           fi
