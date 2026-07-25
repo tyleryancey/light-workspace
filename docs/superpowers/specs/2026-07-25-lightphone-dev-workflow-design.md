@@ -61,17 +61,18 @@ Restructure Tyler's Light Phone III tool development so that:
 |---|---|
 | `light-sudoku`, `light-tides`, `light-ledger`, `light-chess`, `light-ringtone-studio` | One standalone **public** repo per tool. `main` = prod pointer = submission artifact. Own issues, releases, README, topics (`lightphone`, `lightos`, `light-sdk`). Created by pushing the existing tool branch — full history (SDK ancestry) preserved so `upstream` merges keep working. |
 | `light-sdk` | The GitHub **fork** of `lightphone/light-sdk` (renamed from `light-tools`; renames redirect). Reserved for upstream contributions only: `main` mirrors upstream (never committed to), `fix/*`/`feat/*` branches per green-lit issue. GitHub permits one fork per account — this is its one job. |
-| `light-workspace` | **Public.** Reusable upstream-sync workflow, cross-tool conventions/docs (`SYNCING.md`, QA checklist, PR template source), specs for unstarted tools (Sun & Sky), rescued scratchpads. Anything truly private stays local or in a separate private repo (decided per item at migration). |
+| `light-workspace` | **Public.** Home of **all shared reusable CI workflows** (upstream-sync, PR check, release, submission-readiness — see §4.2; tool repos carry only ~10-line callers, so CI improvements land once instead of five times), cross-tool conventions/docs (`SYNCING.md`, QA checklist, PR template source), specs for unstarted tools (Sun & Sky), rescued scratchpads. Anything truly private stays local or in a separate private repo (decided per item at migration). |
 
 Future tools start as a fresh repo scaffolded from upstream `main` plus their spec from `light-workspace`.
 
 ### 4.2 Per-tool repo model (dev → qa → prod)
 
 - **Branches:** `main` (protected: PR + green CI required) plus short-lived `feat/*` / `fix/*` (upstream's naming convention). Dev iteration on the emulator happens on feature branches.
-- **CI (GitHub Actions):**
-  - `pr-check.yml` (inherited): `./gradlew check` on every PR.
-  - `release.yml` (new): on tag `v*` — build APK, create GitHub Release, attach APK.
-  - `sync.yml` (new, ~10 lines): calls the reusable workflow from `light-workspace` (weekly cron + `workflow_dispatch`).
+- **CI (GitHub Actions):** all shared logic lives in `light-workspace` as **reusable workflows**; each tool repo carries only thin (~10-line) callers. Four callers per repo:
+  - `check.yml` — on every PR: Gradle wrapper validation (`gradle/actions/wrapper-validation` — standard supply-chain hygiene for public Gradle repos), then `./gradlew check` (logic from the inherited `pr-check.yml`, promoted to the reusable form).
+  - `submission-check.yml` — on every PR: **builder-parity / submission-readiness validation** against Light's documented contract: (a) `versionName` is strict semver with no pre-release/build metadata (the rule that already bit sudoku's `1.3`); (b) `versionCode` strictly greater than the last released tag's; (c) tool changes confined to the builder-extracted paths (`tool/lighttool.toml`, `tool/build.gradle.kts`, `tool/src/main/kotlin/**`, resources/assets) — changes to **build-affecting paths outside `tool/`** (`sdk/`, `plugin/`, `lint-rules/`, `settings.gradle.kts`, root build files, version catalogs) are flagged unless they're intentional SDK patches awaiting upstreaming; docs/meta files (`CLAUDE.md`, `docs/`, `.claude/`, workflow callers, `SUBMISSION.md`) are exempt since the builder ignores them; (d) permissions restricted to the SDK allow-list. Catches "works locally, fails Light's sandbox" at PR time. *Follow-up (not up-front):* once upstream's `builder/` Docker image stabilizes (PR #117 just productionized it), graduate this to running Light's actual container against the commit — a dress rehearsal of their build servers.
+  - `release.yml` — on tag `v*`: assert the tag matches `lighttool.toml`'s `versionName` (prevents tag/metadata drift); verify or auto-regenerate `SUBMISSION.md`'s commit SHA and version fields; build the APK; create the GitHub Release with the APK attached.
+  - `sync.yml` — weekly cron + `workflow_dispatch`: calls the reusable upstream-sync workflow (§4.3).
   - Repo secret: GitHub token with `read:packages` for SDK artifacts.
 - **QA gate:** before merging a release-worthy PR, install that branch's build on the physical LP3 via Android Studio and exercise it; QA checklist lives in the PR template. Each repo carries a `run-<tool>` Claude Code skill (modeled on the existing `run-ringtone-studio`) so device deploy is one command. Device config (`serverPackage = com.lightos`) is committed, as tides already does.
 - **Releases:** merge → tag `vX.Y.Z` on `main` (plain semver, no tool prefix, no `-rc` suffixes — the builder rejects pre-release metadata in `versionName`; `versionCode` strictly increases). `release.yml` publishes the APK.
@@ -117,7 +118,7 @@ The pristine local `light-sdk` vendor clone is retired; the fork's mirrored `mai
 
 1. **Secure at-risk work:** push `ledger` (28 commits); commit chess's device-config tweaks; create `light-workspace` and commit the Sun & Sky spec + all four `Untitled_*` scratchpads.
 2. **Defuse hazards:** close fork PRs #3/#4; delete `sync/main-into-sudoku` and `sync/main-into-ledger` (committed conflict markers; superseded by §4.3).
-3. **Create the five tool repos:** push each tool branch as new repo `main`; re-create tags under the plain `vX.Y.Z` convention pointing at the same commits (sudoku-v1.1…v1.3.2 → v1.1.0…v1.3.2; tides-v0.1.0 → v0.1.0; tags do not transfer automatically and are being renamed anyway); recreate the 5 sudoku GitHub Releases with their APK assets downloaded from the fork first; add `upstream` remotes, the three workflows, `read:packages` secret, branch protection, topics/descriptions, `SUBMISSION.md` where missing.
+3. **Create the five tool repos:** push each tool branch as new repo `main`; re-create tags under the plain `vX.Y.Z` convention pointing at the same commits (sudoku-v1.1…v1.3.2 → v1.1.0…v1.3.2; tides-v0.1.0 → v0.1.0; tags do not transfer automatically and are being renamed anyway); recreate the 5 sudoku GitHub Releases with their APK assets downloaded from the fork first; add `upstream` remotes, the four caller workflows (check, submission-check, release, sync — reusable definitions land in `light-workspace` first), `read:packages` secret, branch protection, topics/descriptions, `SUBMISSION.md` where missing.
 4. **Re-point local folders:** convert each worktree/clone into a standalone clone of its new repo; rename folders to match repo names; carry over gitignored precious state. Re-point the vendor `light-sdk` clone at the renamed fork (origin=tyleryancey/light-sdk, upstream=lightphone/light-sdk), preserving its untracked `CLAUDE.md`.
 5. **Clean the fork** (only after 3–4 verified): delete tool branches, delete the 12 inherited branches, reset `main` to upstream, remove old sync workflow, rename `light-tools` → `light-sdk`, update description.
 6. **Verify:** every repo `./gradlew check` green; releases intact; every folder opens in Android Studio; worktree removal left no stale registrations.
@@ -136,9 +137,13 @@ The pristine local `light-sdk` vendor clone is retired; the fork's mirrored `mai
 | GitHub rename breaks local remotes | Renames redirect; local remotes updated in step 4 anyway |
 | Reusable-workflow visibility | `light-workspace` is public, satisfying the public-caller requirement |
 
-## 7. Out of scope
+## 7. Out of scope / deliberately not built up front
 
 - Implementing any tool feature work (sudoku TODOs from `Untitled_sudoku2`, tides v0.2 roadmap, Sun & Sky build-out).
 - Resolving the old `sync/*` conflicts (branches are deleted, not resolved; each new repo syncs freshly from upstream).
 - Discord/awesome-light promotion beyond the aftercare checklist.
 - The `light-phone-3-lightos-dev` folder's `sudoku-port` branch contents (flagged for user review in aftercare).
+- **Signing workflows** — Light signs official builds; debug-signed APKs suffice for sideload releases.
+- **Nightly builds** — no consumer.
+- **Automation of upstream PRs or issue filing** — upstream's issue-first rule and AI policy make that human-only by design.
+- **Container-based builder dress rehearsal** — noted as a follow-up in §4.2 once upstream's `builder/` image stabilizes; pre-1.0, the harness may still change.
