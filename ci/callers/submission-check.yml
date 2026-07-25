@@ -1,0 +1,6 @@
+name: submission-check
+on:
+  pull_request: {}
+jobs:
+  submission-check:
+    uses: tyleryancey/light-workspace/.github/workflows/reusable-submission-check.yml@main

@@ -1,0 +1,57 @@
+name: reusable-sync
+on:
+  workflow_call: {}
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: attempt upstream merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name  "light-sync bot"
+          git config user.email "actions@users.noreply.github.com"
+          git remote add upstream https://github.com/lightphone/light-sdk.git
+          git fetch upstream main --quiet
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream/main."; exit 0
+          fi
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+          if git merge --no-edit upstream/main; then
+            RESULT=clean
+          else
+            UNMERGED=$(git diff --name-only --diff-filter=U)
+            OUTSIDE=$(echo "$UNMERGED" | grep -v '^tool/' || true)
+            if [ -z "$OUTSIDE" ]; then
+              # All conflicts are inside tool/ — our tool module always wins.
+              # DU = deleted by us (we removed the sample; upstream edited it) -> stay deleted.
+              # UD/UU/AA = keep our version.
+              git status --porcelain | awk '$1=="DU"{print $2}' | xargs -r git rm -f --quiet --
+              git status --porcelain | awk '$1=="UD"||$1=="UU"||$1=="AA"{print $2}' \
+                | xargs -r -I{} sh -c 'git checkout --ours -- "{}" && git add -- "{}"'
+              git commit --no-edit
+              RESULT=resolved
+            else
+              git merge --abort
+              git reset --hard upstream/main
+              RESULT=conflict
+            fi
+          fi
+          git push origin "$BRANCH"
+          if [ "$RESULT" = conflict ]; then
+            gh pr create --base main --head "$BRANCH" \
+              --title "Upstream sync $(date +%Y-%m-%d): manual resolution needed" \
+              --body "$(printf 'Merging upstream/main conflicts outside tool/ in:\n\n%s\n\nResolve locally per light-workspace/docs/SYNCING.md. This branch is pinned at upstream/main — no conflict markers are committed.' "$OUTSIDE")"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "Upstream sync $(date +%Y-%m-%d)" \
+              --body "Merge of upstream/main ($RESULT). tool/ conflicts, if any, auto-resolved in this repo's favor. Review the SDK changes and merge when CI is green."
+          fi

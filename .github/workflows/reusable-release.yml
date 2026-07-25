@@ -1,0 +1,48 @@
+name: reusable-release
+on:
+  workflow_call: {}
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: tag must match lighttool.toml versionName
+        run: |
+          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          [ "v$VN" = "$GITHUB_REF_NAME" ] \
+            || { echo "::error::tag $GITHUB_REF_NAME != versionName $VN in tool/lighttool.toml"; exit 1; }
+      - name: versionCode strictly greater than previous release's
+        run: |
+          VC=$(sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p' tool/lighttool.toml)
+          git fetch --tags --quiet
+          PREVTAG=$(git tag -l 'v*' --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          if [ -n "$PREVTAG" ]; then
+            PREV_VC=$(git show "$PREVTAG:tool/lighttool.toml" | sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p')
+            [ "$VC" -gt "$PREV_VC" ] \
+              || { echo "::error::versionCode $VC must be > $PREV_VC (previous release $PREVTAG)"; exit 1; }
+          fi
+      - name: SUBMISSION.md must reference this version
+        run: |
+          VN=${GITHUB_REF_NAME#v}
+          grep -q "$VN" SUBMISSION.md \
+            || { echo "::error::SUBMISSION.md does not mention version $VN — update it before releasing"; exit 1; }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: build sideloadable APK (debug-signed; Light signs official builds)
+        run: ./gradlew :tool:assembleDebug
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: create GitHub Release with APK
+        run: |
+          APK=$(ls tool/build/outputs/apk/debug/*.apk | head -1)
+          NAME="${GITHUB_REPOSITORY#*/}-${GITHUB_REF_NAME}-debug.apk"
+          cp "$APK" "$NAME"
+          gh release create "$GITHUB_REF_NAME" "$NAME" --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

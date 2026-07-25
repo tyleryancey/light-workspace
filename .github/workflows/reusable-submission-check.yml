@@ -1,0 +1,53 @@
+name: reusable-submission-check
+on:
+  workflow_call: {}
+jobs:
+  submission-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: versionName is strict semver
+        run: |
+          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          echo "versionName=$VN"
+          echo "$VN" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "::error::versionName '$VN' must be strict x.y.z semver (Light's builder rejects pre-release/build metadata)"; exit 1; }
+      - name: versionCode monotonic vs last release tag
+        run: |
+          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          VC=$(sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p' tool/lighttool.toml)
+          LAST=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          if [ -z "$LAST" ]; then echo "no v* tags yet; skipping"; exit 0; fi
+          PREV_VN=${LAST#v}
+          PREV_VC=$(git show "$LAST:tool/lighttool.toml" | sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p')
+          echo "version=$VN($VC) last-release=$PREV_VN($PREV_VC)"
+          if [ "$VN" != "$PREV_VN" ]; then
+            # This PR preps a new release: versionCode must strictly increase.
+            [ "$VC" -gt "$PREV_VC" ] \
+              || { echo "::error::versionName changed ($PREV_VN -> $VN) but versionCode $VC is not > $PREV_VC (Light's build server rejects non-increasing versionCode)"; exit 1; }
+          else
+            # No release prepped by this PR: codes should simply not regress.
+            [ "$VC" -ge "$PREV_VC" ] \
+              || { echo "::error::versionCode $VC regressed below released $PREV_VC"; exit 1; }
+          fi
+      - name: flag build-affecting changes outside tool/
+        run: |
+          git fetch origin main --quiet
+          BAD=$(git diff --name-only origin/main...HEAD \
+            | grep -E '^(sdk/|plugin/|lint-rules/|settings\.gradle|build\.gradle|gradle/libs\.versions\.toml|gradle/wrapper/)' || true)
+          if [ -n "$BAD" ]; then
+            echo "::warning::Build-affecting changes outside tool/ (intentional SDK patch awaiting upstreaming?):"
+            echo "$BAD"
+          fi
+      - name: permissions restricted to the SDK allow-list
+        run: |
+          POLICY=$(grep -rl 'ALLOWED_PERMISSIONS' sdk/ | head -1)
+          [ -n "$POLICY" ] || { echo "::warning::could not locate ALLOWED_PERMISSIONS in sdk/; skipping"; exit 0; }
+          REQUESTED=$(sed -n '/^permissions *=/s/.*\[\(.*\)\].*/\1/p' tool/lighttool.toml | tr -d '" ' | tr ',' '\n' | sed '/^$/d')
+          for p in $REQUESTED; do
+            grep -q "$p" "$POLICY" \
+              || { echo "::error::permission '$p' not found in the SDK allow-list ($POLICY)"; exit 1; }
+          done
+          echo "permissions OK: ${REQUESTED:-<none>}"
