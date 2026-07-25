@@ -54,9 +54,20 @@ jobs:
               echo "PR for ${BRANCH} already exists; skipping creation."
               return 0
             fi
-            gh api "repos/${GITHUB_REPOSITORY}/pulls" \
-              -f base=main -f head="$BRANCH" \
-              -f title="$TITLE" -f body="$BODY" --jq .html_url
+            for attempt in 1 2 3; do
+              if gh api "repos/${GITHUB_REPOSITORY}/pulls" \
+                -f base=main -f head="$BRANCH" \
+                -f title="$TITLE" -f body="$BODY" --jq .html_url > /tmp/create_pr_out 2>/tmp/create_pr_err; then
+                cat /tmp/create_pr_out
+                return 0
+              fi
+              echo "::warning::create_pr attempt $attempt/3 failed: $(cat /tmp/create_pr_err)"
+              if [ "$attempt" -lt 3 ]; then
+                sleep 10
+              fi
+            done
+            echo "::error::create_pr failed after 3 attempts: $(cat /tmp/create_pr_err)"
+            exit 1
           }
           if [ "$RESULT" = conflict ]; then
             create_pr "Upstream sync $(date +%Y-%m-%d): manual resolution needed" \
