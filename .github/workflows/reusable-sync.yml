@@ -11,9 +11,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.LIGHT_CI_PAT }}
       - name: attempt upstream merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.LIGHT_CI_PAT }}
         run: |
           set -euo pipefail
           git config user.name  "light-sync bot"

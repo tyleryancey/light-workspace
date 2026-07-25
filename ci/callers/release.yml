@@ -7,3 +7,4 @@ jobs:
     uses: tyleryancey/light-workspace/.github/workflows/reusable-release.yml@main
     permissions:
       contents: write
+    secrets: inherit

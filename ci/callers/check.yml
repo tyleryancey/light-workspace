@@ -4,3 +4,4 @@ on:
 jobs:
   check:
     uses: tyleryancey/light-workspace/.github/workflows/reusable-check.yml@main
+    secrets: inherit

@@ -36,10 +36,6 @@ git add -A
 git commit -m "ci: adopt reusable workflows from light-workspace"
 git push origin main
 
-# Sync workflow opens PRs from Actions:
-gh api -X PUT "repos/$REPO/actions/permissions/workflow" \
-  -f default_workflow_permissions=write -F can_approve_pull_request_reviews=true
-
 gh repo edit "$REPO" --add-topic lightphone --add-topic lightos --add-topic light-phone-3
 
 # Branch protection last (so the setup commit above could land directly on main):
