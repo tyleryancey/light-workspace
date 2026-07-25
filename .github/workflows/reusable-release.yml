@@ -39,7 +39,7 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_PACKAGES_USER: ${{ github.actor }}
-          GH_PACKAGES_TOKEN: ${{ secrets.LIGHT_CI_PAT }}
+          GH_PACKAGES_TOKEN: ${{ secrets.LIGHT_PACKAGES_TOKEN }}
       - name: create GitHub Release with APK
         run: |
           APK=$(ls tool/build/outputs/apk/debug/*.apk | head -1)
