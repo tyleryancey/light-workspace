@@ -36,8 +36,14 @@ jobs:
           java-version: '17'
           cache: gradle
       - uses: android-actions/setup-android@v3
-      - name: build sideloadable APK (debug-signed; Light signs official builds)
-        run: ./gradlew :tool:assembleDebug
+      # assembleRelease, matching the build command recorded in ci/templates/SUBMISSION.md and
+      # ci/templates/README.md. Both variants are signed with the same upstream scaffold key
+      # (sdk/keys/lightsdk-dev.jks, applied to debug and release alike in tool/build.gradle.kts),
+      # so the variant is not a signing distinction — the release build is the one that exercises
+      # R8 minify/shrink. Sideloading that variant is what surfaces a ProGuard breakage before it
+      # reaches the build Light compiles and signs from source.
+      - name: build sideloadable APK
+        run: ./gradlew :tool:assembleRelease
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,8 +51,8 @@ jobs:
           GH_PACKAGES_TOKEN: ${{ secrets.LIGHT_PACKAGES_TOKEN }}
       - name: create GitHub Release with APK
         run: |
-          APK=$(ls tool/build/outputs/apk/debug/*.apk | head -1)
-          NAME="${GITHUB_REPOSITORY#*/}-${GITHUB_REF_NAME}-debug.apk"
+          APK=$(ls tool/build/outputs/apk/release/*.apk | head -1)
+          NAME="${GITHUB_REPOSITORY#*/}-${GITHUB_REF_NAME}.apk"
           cp "$APK" "$NAME"
           gh release create "$GITHUB_REF_NAME" "$NAME" --title "$GITHUB_REF_NAME" --generate-notes
         env:
