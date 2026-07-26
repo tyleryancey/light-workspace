@@ -24,6 +24,10 @@ jobs:
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Already up to date with upstream/main."; exit 0
           fi
+          OPEN_SYNC=$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open" --jq '[.[] | select(.head.ref | startswith("sync/upstream-"))] | length')
+          if [ "$OPEN_SYNC" -gt 0 ]; then
+            echo "An open sync PR already exists; resolve it first. Skipping this run."; exit 0
+          fi
           BRANCH="sync/upstream-$(date +%Y%m%d)"
           git checkout -b "$BRANCH"
           if git merge --no-edit upstream/main; then
@@ -35,9 +39,12 @@ jobs:
               # All conflicts are inside tool/ — our tool module always wins.
               # DU = deleted by us (we removed the sample; upstream edited it) -> stay deleted.
               # UD/UU/AA = keep our version.
-              git status --porcelain | awk '$1=="DU"{print $2}' | xargs -r git rm -f --quiet --
-              git status --porcelain | awk '$1=="UD"||$1=="UU"||$1=="AA"{print $2}' \
-                | xargs -r -I{} sh -c 'git checkout --ours -- "{}" && git add -- "{}"'
+              git diff --name-only --diff-filter=U -z | while IFS= read -r -d '' f; do
+                case "$(git status --porcelain=v1 -- "$f" | cut -c1-2)" in
+                  DU) git rm -f -q -- "$f" ;;
+                  *)  git checkout --ours -- "$f" && git add -- "$f" ;;
+                esac
+              done
               git commit --no-edit
               RESULT=resolved
             else

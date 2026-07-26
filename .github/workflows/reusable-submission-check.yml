@@ -43,8 +43,11 @@ jobs:
           fi
       - name: permissions restricted to the SDK allow-list
         run: |
-          POLICY=$(grep -rl 'ALLOWED_PERMISSIONS' sdk/ | head -1)
-          [ -n "$POLICY" ] || { echo "::warning::could not locate ALLOWED_PERMISSIONS in sdk/; skipping"; exit 0; }
+          POLICY=$(git grep -l 'ALLOWED_PERMISSIONS' -- '*.kt' 2>/dev/null | head -1 || true)
+          if [ -z "$POLICY" ]; then
+            POLICY=$(grep -rl 'ALLOWED_PERMISSIONS' plugin/ sdk/ 2>/dev/null | head -1 || true)
+          fi
+          [ -n "$POLICY" ] || { echo "::warning::could not locate ALLOWED_PERMISSIONS anywhere in the repo; skipping"; exit 0; }
           REQUESTED=$(sed -n '/^permissions *=/s/.*\[\(.*\)\].*/\1/p' tool/lighttool.toml | tr -d '" ' | tr ',' '\n' | sed '/^$/d')
           for p in $REQUESTED; do
             grep -q "$p" "$POLICY" \

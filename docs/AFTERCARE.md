@@ -10,4 +10,6 @@
 - [ ] Post chess, ledger, ringtone-studio, tides in Discussions → Tools; PR all tools to garado/awesome-light
 - [ ] Create `run-<tool>` Claude deploy skills in the other four repos, modeled on light-ringtone-studio's
 - [ ] First release for chess (SUBMISSION.md exists; tag v1.0.0 when QA'd), ringtone-studio and ledger when ready
-- [ ] Set LIGHT_PACKAGES_TOKEN and LIGHT_CI_PAT secrets on light-chess, light-ledger, light-ringtone-studio, light-tides (until then their `check` CI fails on packages auth)
+- [ ] Set LIGHT_PACKAGES_TOKEN and LIGHT_CI_PAT secrets on light-chess, light-ledger, light-ringtone-studio, light-tides (until then their `check` CI fails on packages auth AND the Monday 14:00 UTC sync cron fails on checkout — set before Mon 2026-07-28 to avoid red runs)
+- [ ] Write a per-tool README for each of the five repos (they still show the SDK's README) before posting to Discussions/awesome-light
+- [ ] Note: classic PATs expire — when LIGHT_CI_PAT/LIGHT_PACKAGES_TOKEN rotate, update secrets on all five repos; GitHub also auto-disables cron workflows after ~60 days of repo inactivity (re-enable via Actions tab)
