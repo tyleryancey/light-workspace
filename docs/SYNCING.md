@@ -28,3 +28,26 @@ expected, not a sign CI is broken.
 An open `sync/upstream-*` PR blocks all future syncs in this repo (the sync
 workflow's `OPEN_SYNC` guard skips runs while one exists), so resolving
 promptly matters.
+
+## Always pass `-R <owner>/<repo>` to `gh` in a repo with an `upstream` remote
+
+Every tool clone (and the sync job, which adds the remote itself) has
+`upstream` → `lightphone/light-sdk` alongside `origin`. With no default set,
+`gh` may resolve the **base repo to upstream**, so `gh pr create` tries to open
+the PR against `lightphone/light-sdk` and fails with a misleading
+`No commits between main and <branch>` / `Head sha can't be blank`. That error
+is base-repo misresolution, not indexing lag and not a bad branch.
+
+Two consequences:
+
+- Pin every `gh` invocation: `gh pr create -R tyleryancey/light-<tool> ...`.
+  (Or set a default once per clone with `gh repo set-default`.)
+- **This is also a safety issue** — had such a call succeeded it would have
+  opened a PR on an upstream repo we treat as read-only. It failed closed, but
+  don't rely on that.
+
+The sync workflow is already immune: its `gh api "repos/${GITHUB_REPOSITORY}/..."`
+calls name the repo explicitly, which is the real reason switching the sync PR
+creation from `gh pr create` to the REST API fixed it. `reusable-release.yml`'s
+`gh release create` is safe today only because that job never adds an `upstream`
+remote — pin it with `-R "$GITHUB_REPOSITORY"` if that ever changes.
