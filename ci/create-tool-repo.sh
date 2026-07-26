@@ -12,6 +12,18 @@ TOOL="$1"; BRANCH="$2"; DESC="$3"
 REPO="tyleryancey/light-$TOOL"
 RAW="https://raw.githubusercontent.com/tyleryancey/light-workspace/main"
 
+# Preflight: the first push below lands directly on main, before branch
+# protection exists (enabled at the end of this script), so CI's serverPackage
+# gate never sees it. Assert it here instead — Light's builder compiles the
+# committed value, and an emulator serverPackage yields an APK that cannot bind
+# to LightOS on real hardware.
+SP=$(git show "$BRANCH:tool/lighttool.toml" | sed -n 's/^serverPackage *= *"\([^"]*\)".*/\1/p')
+if [ "$SP" != "com.lightos" ]; then
+  echo "refusing to scaffold: $BRANCH commits serverPackage=\"${SP:-<unset>}\", expected \"com.lightos\"" >&2
+  echo "fix it on $BRANCH and commit before running this script." >&2
+  exit 1
+fi
+
 gh repo create "$REPO" --public --description "$DESC"
 git push "https://github.com/$REPO.git" "refs/heads/$BRANCH:refs/heads/main"
 
