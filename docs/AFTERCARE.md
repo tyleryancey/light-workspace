@@ -8,7 +8,8 @@
 - [ ] Review/merge the open sync PRs the smoke test created in each tool repo
 - [ ] Optional, no longer urgent: file either upstream bug from `docs/UPSTREAM-BACKLOG.md` (human-authored, issue-first). Both private SDK patches were dropped 2026-07-26 so the repos sync cleanly; the bugs are documented with patches, evidence, and recovery instructions. The system-back one is the better first filing.
 - [ ] Post chess, ledger, ringtone-studio, tides in Discussions → Tools; PR all tools to garado/awesome-light
-- [ ] Create `run-<tool>` Claude deploy skills in the other four repos, modeled on light-ringtone-studio's
+- [x] Deploy skill for every repo — superseded 2026-07-26 by the generic `run-light-tool` skill (`skills/run-light-tool/`, installed at user level), which reads the package id from `tool/lighttool.toml` and works in any tool repo. Decide separately whether to keep `light-ringtone-studio/.claude/skills/run-ringtone-studio/` for its tool-specific commands (`ringtone-uri`, `audio-log`, its tap map) or retire it now that the generic driver covers the shared surface.
+- [ ] Run `skills/install-skills.sh` after pulling on any new machine — it symlinks `skills/*` into `~/.claude/skills`
 - [ ] First release for chess (SUBMISSION.md exists; tag v1.0.0 when QA'd), ringtone-studio and ledger when ready
 - [x] Set LIGHT_PACKAGES_TOKEN and LIGHT_CI_PAT secrets on light-chess, light-ledger, light-ringtone-studio, light-tides — done 2026-07-25; all five repos now hold both secrets
 - [ ] Write a per-tool README for each of the five repos (they still show the SDK's README) before posting to Discussions/awesome-light — sections and rationale in `docs/README-CHECKLIST.md`, skeleton in `ci/templates/README.md`
