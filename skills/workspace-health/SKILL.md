@@ -93,6 +93,16 @@ inactivity, which silently stops syncing on a quiet tool. Re-enable from the
 repo's Actions tab. Also flags a **scheduled** workflow with zero runs, for the
 same reason.
 
+One known gap in the zero-runs half: deciding whether a workflow is scheduled
+means reading its YAML off a specific clone's disk, while findings are emitted
+once per *canonical* GitHub repo. When several directories share one repo — the
+rename-redirect case above — whichever directory claims the finding first is the
+one whose disk gets read. If that happens to be a legacy clone that predates the
+workflow, the check sees no `schedule:` trigger and drops the finding rather than
+misattributing it. Directory order makes this unlikely today, but if a scheduled
+workflow you know exists never appears here, check it directly in the Actions tab
+rather than trusting the silence.
+
 Deliberately *not* flagged, because it is noise rather than signal: a
 tag-triggered `release.yml` that has never run (no release yet), and a
 `workflow_call`-only reusable workflow with no runs (its runs are attributed to

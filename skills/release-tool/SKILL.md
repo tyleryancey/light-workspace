@@ -68,7 +68,17 @@ Two things the script deliberately does *not* do, so you don't over-trust a gree
 - **The build.** Only `check / check` on the PR and the release job itself compile
   anything. Preflight is metadata.
 
-Two fidelity notes worth knowing at the wrong moment:
+Three fidelity notes worth knowing at the wrong moment:
+
+- **The SDK validates `versionName` more strictly than CI does, and it does so at build
+  time.** Both preflight and `submission-check` use `^[0-9]+\.[0-9]+\.[0-9]+$`, which
+  accepts leading zeros (`01.2.3` passes). The SDK's own
+  `LightToolPolicy.VERSION_NAME_PATTERN` is `^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$`
+  and rejects them, and it runs at Gradle-configure time — so a leading-zero version goes
+  green through preflight *and* the PR, then fails inside the release job's build, after
+  the tag is already pushed. That is exactly the state this skill exists to avoid, so
+  don't write leading zeros. Preflight deliberately keeps CI's looser regex rather than
+  the stricter one, because matching CI byte-for-byte is what makes it a faithful mirror.
 
 - The "previous release" both CI and preflight compare against is the
   **highest-sorting** `v*` tag (`--sort=-v:refname`), not the most recent one. If a

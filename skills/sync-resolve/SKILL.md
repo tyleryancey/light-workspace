@@ -111,7 +111,7 @@ git checkout --ours tool/lighttool.toml && git add tool/lighttool.toml
 
 Take ours wholesale rather than hand-merging field by field; there is nothing in upstream's sample you want. A `--theirs` slip on this one file is the single edit that renames the tool.
 
-It also fails `submission-check` three separate ways, which is worth knowing so that step isn't a coin flip: the sample's `versionName` isn't strict `x.y.z` semver, its `versionCode` isn't monotonic against your last release tag, and its `serverPackage` is `com.thelightphone.sdk.emulator` rather than `com.lightos`.
+It also fails `submission-check` two separate ways, which is worth knowing so that step isn't a coin flip: the sample's `versionCode = 1` isn't monotonic against your last release tag, and its `serverPackage` is `com.thelightphone.sdk.emulator` rather than `com.lightos`. Its `versionName` (`1.0.0`) is valid semver and passes — so if you ever see only *one* of those two failures, the other resolution slipped through rather than the gate being flaky.
 
 That last gate matters beyond CI. Light's build server compiles the **committed** `serverPackage`, so an emulator value yields an APK that cannot bind to LightOS on real hardware. `com.lightos` is the only shippable committed value; the emulator value belongs in a temporary local edit for AVD work only.
 

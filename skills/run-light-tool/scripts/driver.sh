@@ -46,6 +46,15 @@ require_repo() {
 # and trailing comments (`id  = "dev.tyler.x"  # permanent once published`)
 # both parse correctly. awk exits itself after the first hit — deliberately not
 # `sed ... | head -1`, which can SIGPIPE the sed and trip `pipefail`.
+#
+# This diverges deliberately from the `sed -n 's/^key *= *"\([^"]*\)".*/\1/p'`
+# form used by the CI workflows, ci/create-tool-repo.sh, preflight.sh, and
+# health.sh. Those are column-0 anchored and bind the value immediately after
+# `=`; this one tolerates leading whitespace and takes the first quoted run.
+# Both agree on every current lighttool.toml. The difference is intentional:
+# CI's copies must match each other byte-for-byte so a local check can honestly
+# mirror a remote gate, whereas this one only has to read a value robustly. If
+# they ever need to agree exactly, this is the one to change.
 toml_value() {
   require_repo
   local key="$1" toml="$REPO_ROOT/tool/lighttool.toml"
