@@ -100,12 +100,14 @@ Consequence to internalize immediately: **that `upstream` remote is why every `g
 
 ## Step 5 — Templates and the README
 
-The script installed `README.md`, `SUBMISSION.md`, and `.github/pull_request_template.md`. Two docs are yours to place, at the repo root (matching ringtone-studio and tides):
+The script installed `README.md`, `SUBMISSION.md`, and `.github/pull_request_template.md`. Two docs are yours to place, at the repo root (matching ringtone-studio and tides). `main` is protected, so this happens on a branch — it becomes the repo's first PR:
 
 ```bash
 W=~/Documents/lightphone/light-workspace
-cp $W/ci/templates/CLAUDE.md      ~/Documents/lightphone/light-<tool>/CLAUDE.md
-cp $W/ci/templates/00-ASSESSMENT.md ~/Documents/lightphone/light-<tool>/00-ASSESSMENT.md
+cd ~/Documents/lightphone/light-<tool>
+git switch -c docs/plan-of-record
+cp $W/ci/templates/CLAUDE.md        CLAUDE.md
+cp $W/ci/templates/00-ASSESSMENT.md 00-ASSESSMENT.md
 ```
 
 Nothing substitutes their placeholders — fill `{{LABEL}}` and `{{ID}}` in by hand, along with everything knowable now. If a spec exists, most of `CLAUDE.md` is a port of it; leave a `TODO:` in place rather than inventing content, because a wrong claim about the SDK costs more than an admitted gap.
@@ -116,20 +118,29 @@ Two rules for `CLAUDE.md`: keep its `## lighttool.toml` block byte-matching the 
 
 **The README prose must be the author's, not templated filler.** `docs/README-CHECKLIST.md` in light-workspace explains what makes each section good and why it exists; point them there. This is the first artifact Light's maintainers and the community see — before anyone opens a source file — and Light's stated approval bar is whether a tool "matches the Light ethos both functionally and aesthetically." A README that reads as filled-in boilerplate fails that bar before the code gets a chance. A short, honest paragraph in the author's own voice beats every TODO left in place.
 
-## Step 6 — Secrets (this step is interactive; you stop here)
+Commit these, but hold the PR until Step 6's secrets are in place:
 
-CI cannot pass without two Actions secrets, so set them **before opening the first PR**. Print these for the human to run in their own terminal:
+```bash
+git add -A && git commit -m "docs: add plan of record and feasibility assessment"
+git push -u origin docs/plan-of-record
+```
+
+## Step 6 — Secrets (interactive; you stop and wait here)
+
+CI cannot pass without two Actions secrets, so they must be set **before the first PR opens**. Print these for the human to run in their own terminal, then **stop and wait for them to confirm both are set** — do not proceed to Step 7 on your own:
 
 ```bash
 gh secret set LIGHT_PACKAGES_TOKEN -R tyleryancey/light-<tool>
 gh secret set LIGHT_CI_PAT         -R tyleryancey/light-<tool>
 ```
 
-The secret **name** is the argument. The value is pasted at the hidden prompt `gh` puts up. Then verify names only:
+The secret **name** is the argument. The value is pasted at the hidden prompt `gh` puts up. Resume only once both names appear:
 
 ```bash
 gh secret list -R tyleryancey/light-<tool>
 ```
+
+That lists names and update times, never values — which is exactly why it's the right way to confirm.
 
 **Never accept a token as a command-line argument, never echo one, and never run these on the human's behalf with a value inline.** A token on a command line is captured by shell history, process listings, and this transcript. That has already happened once in this workspace and forced a rotation — the constraint exists because of a real incident, not out of caution. If a token appears anywhere in a command you are about to run, stop and hand the command back instead.
 
@@ -153,9 +164,10 @@ gh api repos/$R/branches/main/protection --jq '.required_status_checks.contexts'
 gh api repos/$R/contents/.github/workflows --jq '[.[].name]'
 ```
 
-Expect: public, default branch `main`; protection contexts exactly `check / check` and `submission-check / submission-check`; all four workflows present (`check.yml`, `submission-check.yml`, `release.yml`, `sync.yml`). Then open the first PR (the templates from Step 5 are a natural first one) and confirm CI goes green:
+Expect: public, default branch `main`; protection contexts exactly `check / check` and `submission-check / submission-check`; all four workflows present (`check.yml`, `submission-check.yml`, `release.yml`, `sync.yml`). Then open Step 5's branch as the first PR and confirm CI goes green:
 
 ```bash
+gh pr create -R $R --fill
 gh pr checks -R $R
 ```
 
