@@ -10,13 +10,13 @@ jobs:
           fetch-depth: 0
       - name: versionName is strict semver
         run: |
-          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          VN=$(sed -n 's/^versionName *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
           echo "versionName=$VN"
           echo "$VN" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
             || { echo "::error::versionName '$VN' must be strict x.y.z semver (Light's builder rejects pre-release/build metadata)"; exit 1; }
       - name: versionCode monotonic vs last release tag
         run: |
-          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          VN=$(sed -n 's/^versionName *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
           VC=$(sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p' tool/lighttool.toml)
           LAST=$(git tag -l 'v*' --sort=-v:refname | head -1)
           if [ -z "$LAST" ]; then echo "no v* tags yet; skipping"; exit 0; fi
@@ -32,6 +32,12 @@ jobs:
             [ "$VC" -ge "$PREV_VC" ] \
               || { echo "::error::versionCode $VC regressed below released $PREV_VC"; exit 1; }
           fi
+      - name: serverPackage is com.lightos
+        run: |
+          SP=$(sed -n 's/^serverPackage *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
+          echo "serverPackage=$SP"
+          [ "$SP" = "com.lightos" ] \
+            || { echo "::error::serverPackage '$SP' must be 'com.lightos' in commits — Light's builder compiles the committed value, so an emulator serverPackage produces an APK that cannot bind to LightOS on real hardware. For local AVD work, flip it temporarily and restore with 'git checkout -- tool/lighttool.toml' before committing."; exit 1; }
       - name: flag build-affecting changes outside tool/
         run: |
           git fetch origin main --quiet
