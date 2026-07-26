@@ -100,6 +100,10 @@ cmd_build() {
   # with `git checkout -- tool/lighttool.toml`. The check below is advisory
   # only: it prints what it sees and never edits the file, because an
   # invisible-to-`git status` edit is exactly how repos drift.
+  #
+  # Target detection is a serial-prefix heuristic: a TCP-attached AVD
+  # (127.0.0.1:5554) won't match emulator-*, so it can warn spuriously. That's
+  # why this only ever prints — never blocks, never edits.
   require_serial
   require_pkg
   local sp model
@@ -112,7 +116,7 @@ cmd_build() {
         "WARNING: emulator target but serverPackage='$sp'. Set it to com.thelightphone.sdk.emulator, then restore with 'git checkout -- tool/lighttool.toml'." >&2 ;;
     *)
       [ "$sp" = "com.lightos" ] || echo \
-        "WARNING: physical-device target but serverPackage='$sp'. Real hardware needs com.lightos ('git checkout -- tool/lighttool.toml' restores it)." >&2 ;;
+        "WARNING: physical-device target but serverPackage='$sp'. Real hardware needs com.lightos ('git checkout -- tool/lighttool.toml' restores it). Serial-prefix heuristic — ignore if this is a TCP-attached AVD." >&2 ;;
   esac
   cd "$REPO_ROOT"
   ./gradlew :tool:installDebug --console=plain
