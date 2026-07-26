@@ -6,7 +6,7 @@
 - [ ] Review then archive/delete `~/Documents/light-phone-3-lightos-dev/` (1.5 GB; contains an untracked ledger plan doc — check before deleting) and the `tyleryancey/light-sdk-sudoku-port` GitHub repo
 - [ ] `./gradlew clean` in idle projects (~2.3 GB regenerable output)
 - [ ] Review/merge the open sync PRs the smoke test created in each tool repo
-- [ ] Write and file the safe-drawing-insets issue upstream (human-authored, issue-first; patch lives in light-sudoku's sdk/ delta)
+- [ ] Optional, no longer urgent: file either upstream bug from `docs/UPSTREAM-BACKLOG.md` (human-authored, issue-first). Both private SDK patches were dropped 2026-07-26 so the repos sync cleanly; the bugs are documented with patches, evidence, and recovery instructions. The system-back one is the better first filing.
 - [ ] Post chess, ledger, ringtone-studio, tides in Discussions → Tools; PR all tools to garado/awesome-light
 - [ ] Create `run-<tool>` Claude deploy skills in the other four repos, modeled on light-ringtone-studio's
 - [ ] First release for chess (SUBMISSION.md exists; tag v1.0.0 when QA'd), ringtone-studio and ledger when ready
