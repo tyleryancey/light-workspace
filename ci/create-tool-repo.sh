@@ -26,14 +26,14 @@ done
 curl -fsSL "$RAW/ci/templates/pull_request_template.md" -o .github/pull_request_template.md
 rm -f .github/workflows/sync-upstream.yml .github/workflows/pr-check.yml
 
-ID=$(sed -n 's/^id *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
-LABEL=$(sed -n 's/^label *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+ID=$(sed -n 's/^id *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
+LABEL=$(sed -n 's/^label *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
 curl -fsSL "$RAW/ci/templates/README.md" \
   | sed -e "s|{{LABEL}}|$LABEL|g" -e "s|{{ID}}|$ID|g" -e "s|{{REPO}}|$REPO|g" \
   > README.md
 
 if [ ! -f SUBMISSION.md ]; then
-  VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+  VN=$(sed -n 's/^versionName *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
   VC=$(sed -n 's/^versionCode *= *\([0-9]*\).*/\1/p' tool/lighttool.toml)
   PERMS=$(sed -n '/^permissions *=/s/.*\[\(.*\)\].*/\1/p' tool/lighttool.toml)
   curl -fsSL "$RAW/ci/templates/SUBMISSION.md" \

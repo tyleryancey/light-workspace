@@ -12,7 +12,7 @@ jobs:
           fetch-depth: 0
       - name: tag must match lighttool.toml versionName
         run: |
-          VN=$(sed -n 's/^versionName *= *"\(.*\)".*/\1/p' tool/lighttool.toml)
+          VN=$(sed -n 's/^versionName *= *"\([^"]*\)".*/\1/p' tool/lighttool.toml)
           [ "v$VN" = "$GITHUB_REF_NAME" ] \
             || { echo "::error::tag $GITHUB_REF_NAME != versionName $VN in tool/lighttool.toml"; exit 1; }
       - name: versionCode strictly greater than previous release's
