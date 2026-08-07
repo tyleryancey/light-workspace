@@ -125,9 +125,21 @@ Only after preflight is green and device QA is confirmed:
 
 ```bash
 cd ~/Documents/lightphone/light-<tool>
-git tag v1.3.2            # annotate if you want notes: git tag -a v1.3.2 -m "…"
+git tag v1.3.2            # LIGHTWEIGHT only — never `git tag -a` (see below)
 git push origin v1.3.2
 ```
+
+**The tag must be lightweight, not annotated.** Proven on light-wiki v0.1.0
+(2026-08-07): for a tag-triggered run, `actions/checkout@v4` force-rewrites
+the local tag ref to the *peeled commit* (`+<GITHUB_SHA>:refs/tags/vX.Y.Z`).
+The release workflow's versionCode step then runs `git fetch --tags --quiet`,
+which for an annotated tag tries to replace that commit ref with the tag
+*object*, refuses to clobber, and exits 1 — **silently**, because `--quiet`
+suppresses the rejection line. The step fails with no output before any
+assertion runs, after the tag is already pushed. A lightweight tag is the
+same sha as what checkout wrote, so the fetch is a no-op. Release notes
+belong in the GitHub release (the workflow passes `--generate-notes`), not
+in the tag object.
 
 ## 5. Watch, then verify
 
